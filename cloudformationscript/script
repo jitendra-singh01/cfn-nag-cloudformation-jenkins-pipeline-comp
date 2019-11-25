@@ -1,0 +1,31 @@
+node {
+    try{
+       properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '3', numToKeepStr: '5'))])
+  stage('Testing') {
+      try{
+        build "buildgitcloudformat"
+         retry(1){    
+         echo "putting on sleep mode"
+         sleep time: 2000, unit: 'MILLISECONDS'
+         echo "started"
+        def varspac = env.WORKSPACE
+        def result = sh("echo '' > somefile.txt && cfn_nag_scan --input-path ${varspac}/../Cloudformationtemplate1/application/vpc.yml -n | grep '[[:lower:]]' | tr -d '|' > somefile.txt")
+        def err = sh(script:"cat somefile.txt | grep -i Failures | grep -Eo [+-]?[0-9]+?",returnStdout:true)
+        err = "${err}".trim()
+        echo "${err}"
+        if(err == "1"){
+            def err1 = sh(script:"cat somefile.txt | sed -n '/FAIL/,/Failures/p'",returnStdout:true)
+            //echo "${err1}"
+            throw new Exception("${err1}")
+        }else{
+            echo "buildnextjob"
+        }
+         }
+      }catch (error) {
+     
+    }
+  }
+}catch (error) {
+       
+    }
+}
