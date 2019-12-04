@@ -1,0 +1,40 @@
+def err = ''
+pipeline {
+environment {
+registry = "infotek/dockerit"
+registryCredential = 'dockerhub'
+dockerImage = ''}
+agent any
+stages {
+stage('Cloning Git') {
+ steps {
+ git 'https://github.com/tahmed11/docker-dvwa.git'
+ }}
+stage('Building image') {
+ steps{
+ script {
+ dockerImage = docker.build registry + ":${BUILD_NUMBER}"}}}
+stage('Container Security Scan') {
+    steps{
+        sh("echo ''> res.txt")
+        sh("(curl -s https://ci-tools.anchore.io/inline_scan-v0.3.3 | bash -s -- -p ${registry}:${BUILD_NUMBER} > res.txt)")
+        script{
+            err = sh(script:"grep 'HIGH Vulnerability' res.txt",returnStdout:true)
+            if(err!=""){
+                throw new Exception("Image is vulnerable")
+            }
+            
+        }
+    }
+}
+stage('Deploy Image') {
+ steps{
+ script {
+ docker.withRegistry( '', registryCredential ) {
+ dockerImage.push()
+ }}}}
+ 
+    
+}
+    
+}
